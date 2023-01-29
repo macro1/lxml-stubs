@@ -2,6 +2,7 @@
 # This is *far* from complete, and the stubgen-generated ones crash mypy.
 # Any use of `Any` below means I couldn't figure out the type.
 
+import sys
 from os import PathLike
 from typing import (
     IO,
@@ -28,11 +29,12 @@ from typing_extensions import Literal, Protocol, TypeGuard
 # dummy for missing stubs
 def __getattr__(name: str) -> Any: ...
 
-# We do *not* want `typing.AnyStr` because it is a `TypeVar`, which is an
-# unnecessary constraint. It seems reasonable to constrain each
-# List/Dict argument to use one type consistently, though, and it is
-# necessary in order to keep these brief.
-_AnyStr = Union[str, bytes]
+if sys.version_info < (3, 0):
+    # for Python versions less than 3, lxml can return either
+    # bytes or str in many contexts
+    _Str = Union[bytes, str]
+else:
+    _Str = str
 _AnySmartStr = Union[
     "_ElementUnicodeResult", "_PyElementUnicodeResult", "_ElementStringResult"
 ]
@@ -44,13 +46,13 @@ _XPathObject = Union[
     bool,
     float,
     _AnySmartStr,
-    _AnyStr,
+    _Str,
     List[
         Union[
             "_Element",
             _AnySmartStr,
-            _AnyStr,
-            Tuple[Optional[_AnyStr], Optional[_AnyStr]],
+            _Str,
+            Tuple[Optional[_Str], Optional[_Str]],
         ]
     ],
 ]
@@ -58,7 +60,7 @@ _AnyParser = Union["XMLParser", "HTMLParser"]
 _ListAnyStr = Union[List[str], List[bytes]]
 _DictAnyStr = Union[Dict[str, str], Dict[bytes, bytes]]
 _Dict_Tuple2AnyStr_Any = Union[Dict[Tuple[str, str], Any], Tuple[bytes, bytes], Any]
-_xpath = Union["XPath", _AnyStr]
+_xpath = Union["XPath", _Str]
 
 # See https://github.com/python/typing/pull/273
 # Due to Mapping having invariant key types, Mapping[Union[A, B], ...]
@@ -81,7 +83,7 @@ _KnownEncodings = Literal[
     "us-ascii",
 ]
 _ElementOrTree = Union[_Element, _ElementTree]
-_FileSource = Union[_AnyStr, IO[Any], PathLike[Any]]
+_FileSource = Union[_Str, IO[Any], PathLike[Any]]
 
 class ElementChildIterator(Iterator["_Element"]):
     def __iter__(self) -> "ElementChildIterator": ...
@@ -91,21 +93,21 @@ class _ElementUnicodeResult(str):
     is_attribute: bool
     is_tail: bool
     is_text: bool
-    attrname: Optional[_AnyStr]
+    attrname: Optional[_Str]
     def getparent(self) -> Optional["_Element"]: ...
 
 class _PyElementUnicodeResult(str):
     is_attribute: bool
     is_tail: bool
     is_text: bool
-    attrname: Optional[_AnyStr]
+    attrname: Optional[_Str]
     def getparent(self) -> Optional["_Element"]: ...
 
 class _ElementStringResult(bytes):
     is_attribute: bool
     is_tail: bool
     is_text: bool
-    attrname: Optional[_AnyStr]
+    attrname: Optional[_Str]
     def getparent(self) -> Optional["_Element"]: ...
 
 class DocInfo:
@@ -163,7 +165,7 @@ class _Element(Iterable["_Element"], Sized):
         self, child: _Element, start: Optional[int] = ..., stop: Optional[int] = ...
     ) -> int: ...
     def insert(self, index: int, element: _Element) -> None: ...
-    def items(self) -> Sequence[Tuple[_AnyStr, _AnyStr]]: ...
+    def items(self) -> Sequence[Tuple[_Str, _Str]]: ...
     def iter(
         self, tag: Optional[_TagSelector] = ..., *tags: _TagSelector
     ) -> Iterator[_Element]: ...
@@ -189,8 +191,8 @@ class _Element(Iterable["_Element"], Sized):
         tag: Optional[_TagSelector] = ...,
         with_tail: bool = False,
         *tags: _TagSelector,
-    ) -> Iterator[_AnyStr]: ...
-    def keys(self) -> Sequence[_AnyStr]: ...
+    ) -> Iterator[_Str]: ...
+    def keys(self) -> Sequence[_Str]: ...
     def makeelement(
         self,
         _tag: _TagName,
@@ -200,11 +202,11 @@ class _Element(Iterable["_Element"], Sized):
     ) -> _Element: ...
     def remove(self, element: _Element) -> None: ...
     def replace(self, old_element: _Element, new_element: _Element) -> None: ...
-    def set(self, key: _TagName, value: _AnyStr) -> None: ...
-    def values(self) -> Sequence[_AnyStr]: ...
+    def set(self, key: _TagName, value: _Str) -> None: ...
+    def values(self) -> Sequence[_Str]: ...
     def xpath(
         self,
-        _path: _AnyStr,
+        _path: _Str,
         namespaces: Optional[_NonDefaultNSMapArg] = ...,
         extensions: Any = ...,
         smart_strings: bool = ...,
@@ -250,13 +252,13 @@ class _ElementTree:
         self,
         source: _FileSource,
         parser: Optional[_AnyParser] = ...,
-        base_url: Optional[_AnyStr] = ...,
+        base_url: Optional[_Str] = ...,
     ) -> _Element: ...
     def write(
         self,
         file: _FileSource,
-        encoding: _AnyStr = ...,
-        method: _AnyStr = ...,
+        encoding: _Str = ...,
+        method: _Str = ...,
         pretty_print: bool = ...,
         xml_declaration: Any = ...,
         with_tail: Any = ...,
@@ -271,13 +273,13 @@ class _ElementTree:
         file: _FileSource,
         with_comments: bool = ...,
         compression: int = ...,
-        inclusive_ns_prefixes: Iterable[_AnyStr] = ...,
+        inclusive_ns_prefixes: Iterable[_Str] = ...,
     ) -> None: ...
     def _setroot(self, root: _Element) -> None: ...
     def xinclude(self) -> None: ...
     def xpath(
         self,
-        _path: _AnyStr,
+        _path: _Str,
         namespaces: Optional[_NonDefaultNSMapArg] = ...,
         extensions: Any = ...,
         smart_strings: bool = ...,
@@ -295,35 +297,35 @@ class __ContentOnlyEleement(_Element): ...
 class _Comment(__ContentOnlyEleement): ...
 
 class _ProcessingInstruction(__ContentOnlyEleement):
-    target: _AnyStr
+    target: _Str
 
 class _Attrib:
-    def __setitem__(self, key: _AnyStr, value: _AnyStr) -> None: ...
-    def __delitem__(self, key: _AnyStr) -> None: ...
+    def __setitem__(self, key: _Str, value: _Str) -> None: ...
+    def __delitem__(self, key: _Str) -> None: ...
     def update(
         self,
         sequence_or_dict: Union[
-            _Attrib, Mapping[_AnyStr, _AnyStr], Sequence[Tuple[_AnyStr, _AnyStr]]
+            _Attrib, Mapping[_Str, _Str], Sequence[Tuple[_Str, _Str]]
         ],
     ) -> None: ...
-    def pop(self, key: _AnyStr, default: _AnyStr) -> _AnyStr: ...
+    def pop(self, key: _Str, default: _Str) -> _Str: ...
     def clear(self) -> None: ...
     def __repr__(self) -> str: ...
     def __copy__(self) -> _DictAnyStr: ...
     def __deepcopy__(self, memo: Dict[Any, Any]) -> _DictAnyStr: ...
-    def __getitem__(self, key: _AnyStr) -> _AnyStr: ...
+    def __getitem__(self, key: _Str) -> _Str: ...
     def __bool__(self) -> bool: ...
     def __len__(self) -> int: ...
-    def get(self, key: _AnyStr, default: _AnyStr = ...) -> Optional[_AnyStr]: ...
+    def get(self, key: _Str, default: _Str = ...) -> Optional[_Str]: ...
     def keys(self) -> _ListAnyStr: ...
-    def __iter__(self) -> Iterator[_AnyStr]: ...  # actually _AttribIterator
-    def iterkeys(self) -> Iterator[_AnyStr]: ...
+    def __iter__(self) -> Iterator[_Str]: ...  # actually _AttribIterator
+    def iterkeys(self) -> Iterator[_Str]: ...
     def values(self) -> _ListAnyStr: ...
-    def itervalues(self) -> Iterator[_AnyStr]: ...
-    def items(self) -> List[Tuple[_AnyStr, _AnyStr]]: ...
-    def iteritems(self) -> Iterator[Tuple[_AnyStr, _AnyStr]]: ...
-    def has_key(self, key: _AnyStr) -> bool: ...
-    def __contains__(self, key: _AnyStr) -> bool: ...
+    def itervalues(self) -> Iterator[_Str]: ...
+    def items(self) -> List[Tuple[_Str, _Str]]: ...
+    def iteritems(self) -> Iterator[Tuple[_Str, _Str]]: ...
+    def has_key(self, key: _Str) -> bool: ...
+    def __contains__(self, key: _Str) -> bool: ...
     def __richcmp__(self, other: _Attrib, op: int) -> bool: ...
 
 class QName:
@@ -332,8 +334,8 @@ class QName:
     text = ...  # type: str
     def __init__(
         self,
-        text_or_uri_element: Union[None, _AnyStr, _Element],
-        tag: Optional[_AnyStr] = ...,
+        text_or_uri_element: Union[None, _Str, _Element],
+        tag: Optional[_Str] = ...,
     ) -> None: ...
 
 class _XSLTResultTree(_ElementTree, SupportsBytes):
@@ -343,11 +345,11 @@ class _XSLTQuotedStringParam: ...
 
 # https://lxml.de/parsing.html#the-target-parser-interface
 class ParserTarget(Protocol):
-    def comment(self, text: _AnyStr) -> None: ...
+    def comment(self, text: _Str) -> None: ...
     def close(self) -> Any: ...
-    def data(self, data: _AnyStr) -> None: ...
-    def end(self, tag: _AnyStr) -> None: ...
-    def start(self, tag: _AnyStr, attrib: Dict[_AnyStr, _AnyStr]) -> None: ...
+    def data(self, data: _Str) -> None: ...
+    def end(self, tag: _Str) -> None: ...
+    def start(self, tag: _Str, attrib: Dict[_Str, _Str]) -> None: ...
 
 class ElementClassLookup: ...
 
@@ -381,12 +383,12 @@ class _BaseParser:
 class _FeedParser(_BaseParser):
     def __getattr__(self, name: str) -> Any: ...  # Incomplete
     def close(self) -> _Element: ...
-    def feed(self, data: _AnyStr) -> None: ...
+    def feed(self, data: _Str) -> None: ...
 
 class XMLParser(_FeedParser):
     def __init__(
         self,
-        encoding: Optional[_AnyStr] = ...,
+        encoding: Optional[_Str] = ...,
         attribute_defaults: bool = ...,
         dtd_validation: bool = ...,
         load_dtd: bool = ...,
@@ -409,7 +411,7 @@ class XMLParser(_FeedParser):
 class HTMLParser(_FeedParser):
     def __init__(
         self,
-        encoding: Optional[_AnyStr] = ...,
+        encoding: Optional[_Str] = ...,
         collect_ids: bool = ...,
         compact: bool = ...,
         huge_tree: bool = ...,
@@ -430,10 +432,10 @@ class _ResolverRegistry:
 class Resolver:
     def resolve(self, system_url: str, public_id: str): ...
     def resolve_file(
-        self, f: IO[Any], context: Any, *, base_url: Optional[_AnyStr], close: bool
+        self, f: IO[Any], context: Any, *, base_url: Optional[_Str], close: bool
     ): ...
     def resolve_string(
-        self, string: _AnyStr, context: Any, *, base_url: Optional[_AnyStr]
+        self, string: _Str, context: Any, *, base_url: Optional[_Str]
     ): ...
 
 class XMLSchema(_Validator):
@@ -458,69 +460,67 @@ class XSLT:
         self,
         _input: _ElementOrTree,
         profile_run: bool = ...,
-        **kwargs: Union[_AnyStr, _XSLTQuotedStringParam],
+        **kwargs: Union[_Str, _XSLTQuotedStringParam],
     ) -> _XSLTResultTree: ...
     @staticmethod
-    def strparam(s: _AnyStr) -> _XSLTQuotedStringParam: ...
+    def strparam(s: _Str) -> _XSLTQuotedStringParam: ...
 
-def Comment(text: Optional[_AnyStr] = ...) -> _Comment: ...
+def Comment(text: Optional[_Str] = ...) -> _Comment: ...
 def Element(
     _tag: _TagName,
     attrib: Optional[_DictAnyStr] = ...,
     nsmap: Optional[_NSMapArg] = ...,
-    **extra: _AnyStr,
+    **extra: _Str,
 ) -> _Element: ...
 def SubElement(
     _parent: _Element,
     _tag: _TagName,
     attrib: Optional[_DictAnyStr] = ...,
     nsmap: Optional[_NSMapArg] = ...,
-    **extra: _AnyStr,
+    **extra: _Str,
 ) -> _Element: ...
 def ElementTree(
     element: _Element = ...,
     file: _FileSource = ...,
     parser: _AnyParser = ...,
 ) -> _ElementTree: ...
-def ProcessingInstruction(
-    target: _AnyStr, text: _AnyStr = ...
-) -> _ProcessingInstruction: ...
+def ProcessingInstruction(target: _Str, text: _Str = ...) -> _ProcessingInstruction: ...
 
 PI = ProcessingInstruction
 
 def HTML(
-    text: _AnyStr,
+    text: _Str,
     parser: Optional[HTMLParser] = ...,
-    base_url: Optional[_AnyStr] = ...,
+    base_url: Optional[_Str] = ...,
 ) -> _Element: ...
 def XML(
-    text: _AnyStr,
+    text: _Str,
     parser: Optional[XMLParser] = ...,
-    base_url: Optional[_AnyStr] = ...,
+    base_url: Optional[_Str] = ...,
 ) -> _Element: ...
 def cleanup_namespaces(
     tree_or_element: _ElementOrTree,
     top_nsmap: Optional[_NSMapArg] = ...,
-    keep_ns_prefixes: Optional[Iterable[_AnyStr]] = ...,
+    keep_ns_prefixes: Optional[Iterable[_Str]] = ...,
 ) -> None: ...
 def parse(
     source: _FileSource,
     parser: _AnyParser = ...,
-    base_url: _AnyStr = ...,
+    base_url: _Str = ...,
 ) -> Union[_ElementTree, Any]: ...
 @overload
 def fromstring(
-    text: _AnyStr,
+    text: _Str,
     parser: None = ...,
     *,
-    base_url: _AnyStr = ...,
+    base_url: _Str = ...,
 ) -> _Element: ...
 @overload
 def fromstring(
-    text: _AnyStr,
+    text: _Str,
     parser: _AnyParser = ...,
     *,
-    base_url: _AnyStr = ...,
+    base_url: _Str = ...,
 ) -> Union[_Element, Any]: ...
 @overload
 def tostring(
@@ -564,7 +564,7 @@ def tostring(
     exclusive: bool = ...,
     with_comments: bool = ...,
     inclusive_ns_prefixes: Any = ...,
-) -> _AnyStr: ...
+) -> Union[str, bytes]: ...
 
 class _ErrorLog: ...
 class Error(Exception): ...
@@ -596,7 +596,7 @@ class _XPathEvaluatorBase: ...
 class XPath(_XPathEvaluatorBase):
     def __init__(
         self,
-        path: _AnyStr,
+        path: _Str,
         *,
         namespaces: Optional[_NonDefaultNSMapArg] = ...,
         extensions: Any = ...,
@@ -611,7 +611,7 @@ class XPath(_XPathEvaluatorBase):
 class ETXPath(XPath):
     def __init__(
         self,
-        path: _AnyStr,
+        path: _Str,
         *,
         extensions: Any = ...,
         regexp: bool = ...,
@@ -628,8 +628,8 @@ class XPathElementEvaluator(_XPathEvaluatorBase):
         regexp: bool = ...,
         smart_strings: bool = ...,
     ) -> None: ...
-    def __call__(self, _path: _AnyStr, **_variables: _XPathObject) -> _XPathObject: ...
-    def register_namespace(self, prefix: _AnyStr, uri: _AnyStr) -> None: ...
+    def __call__(self, _path: _Str, **_variables: _XPathObject) -> _XPathObject: ...
+    def register_namespace(self, prefix: _Str, uri: _Str) -> None: ...
     def register_namespaces(
         self, namespaces: Optional[_NonDefaultNSMapArg]
     ) -> None: ...
@@ -670,9 +670,9 @@ def XPathEvaluator(
     smart_strings: bool = ...,
 ) -> Union[XPathElementEvaluator, XPathDocumentEvaluator]: ...
 
-_ElementFactory = Callable[[Any, Dict[_AnyStr, _AnyStr]], _Element]
-_CommentFactory = Callable[[_AnyStr], _Comment]
-_ProcessingInstructionFactory = Callable[[_AnyStr, _AnyStr], _ProcessingInstruction]
+_ElementFactory = Callable[[Any, Dict[_Str, _Str]], _Element]
+_CommentFactory = Callable[[_Str], _Comment]
+_ProcessingInstructionFactory = Callable[[_Str, _Str], _ProcessingInstruction]
 
 class TreeBuilder:
     def __init__(
@@ -685,10 +685,10 @@ class TreeBuilder:
         insert_pis: bool = ...,
     ) -> None: ...
     def close(self) -> _Element: ...
-    def comment(self, text: _AnyStr) -> None: ...
-    def data(self, data: _AnyStr) -> None: ...
-    def end(self, tag: _AnyStr) -> None: ...
-    def pi(self, target: _AnyStr, data: Optional[_AnyStr] = ...) -> Any: ...
-    def start(self, tag: _AnyStr, attrib: Dict[_AnyStr, _AnyStr]) -> None: ...
+    def comment(self, text: _Str) -> None: ...
+    def data(self, data: _Str) -> None: ...
+    def end(self, tag: _Str) -> None: ...
+    def pi(self, target: _Str, data: Optional[_Str] = ...) -> Any: ...
+    def start(self, tag: _Str, attrib: Dict[_Str, _Str]) -> None: ...
 
 def iselement(element: Any) -> TypeGuard[_Element]: ...
